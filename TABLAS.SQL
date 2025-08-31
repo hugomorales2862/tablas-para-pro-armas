@@ -1,3 +1,34 @@
+
+
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion VARCHAR(255),
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    rol_id INT DEFAULT NULL,  -- ya no UNSIGNED
+    remember_token VARCHAR(100) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (rol_id) REFERENCES roles(id) ON DELETE SET NULL
+);
+-- ========================
+-- ENTIDADES FUERTES
+-- ========================
+
+CREATE TABLE pro_metodos_pago (
+    metpago_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID método de pago',
+    metpago_descripcion VARCHAR(50) NOT NULL COMMENT 'efectivo, transferencia, etc.',
+    metpago_situacion INT DEFAULT 1 COMMENT '1 = activo, 0 = inactivo'
+);
+
 CREATE TABLE pro_paises (
     pais_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID de país',
     pais_descripcion VARCHAR(50) COMMENT 'Descripción del país',
@@ -22,15 +53,21 @@ CREATE TABLE pro_modelo (
     modelo_situacion INT DEFAULT 1 COMMENT '1 = activo, 0 = inactivo'
 );
 
+-- ========================
+-- EMPRESAS E IMPORTACIONES
+-- ========================
+
 CREATE TABLE pro_empresas_de_importacion (
     empresaimp_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID empresa importadora',
     empresaimp_pais INT NOT NULL COMMENT 'ID del país asociado',
     empresaimp_descripcion VARCHAR(50) COMMENT 'tipo: empresa matriz o logística',
-    empresaimp_situacion INT DEFAULT 1 COMMENT '1 = activa, 0 = inactiva'
+    empresaimp_situacion INT DEFAULT 1 COMMENT '1 = activa, 0 = inactiva',
+    FOREIGN KEY (empresaimp_pais) REFERENCES pro_paises(pais_id)
 );
 
 CREATE TABLE pro_licencias_para_importacion (
-    lipaimp_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID de licencia de importación',
+    lipaimp_id INT AUTO_INCREMENT COMMENT 'ID de licencia de importación',
+    lipaimp_poliza INT COMMENT 'número de póliza o factura',
     lipaimp_descripcion VARCHAR(100) COMMENT 'Descripción identificativa de la licencia',
     lipaimp_empresa INT NOT NULL COMMENT 'Empresa asignada a la licencia',
     lipaimp_clase INT COMMENT 'Clase de arma',
@@ -38,6 +75,7 @@ CREATE TABLE pro_licencias_para_importacion (
     lipaimp_modelo INT COMMENT 'Modelo de arma',
     lipaimp_fecha_vencimiento DATE COMMENT 'Fecha de vencimiento de la licencia',
     lipaimp_situacion INT DEFAULT 1 COMMENT '1 = activa, 0 = inactiva',
+    PRIMARY KEY (lipaimp_id, lipaimp_poliza),
     FOREIGN KEY (lipaimp_empresa) REFERENCES pro_empresas_de_importacion(empresaimp_id),
     FOREIGN KEY (lipaimp_clase) REFERENCES pro_clases_pistolas(clase_id),
     FOREIGN KEY (lipaimp_marca) REFERENCES pro_marcas(marca_id),
@@ -53,21 +91,120 @@ CREATE TABLE pro_digecam (
     FOREIGN KEY (digecam_licencia_import) REFERENCES pro_licencias_para_importacion(lipaimp_id)
 );
 
-CREATE TABLE pro_metodos_pago (
-    metpago_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID método de pago',
-    metpago_descripcion VARCHAR(50) NOT NULL COMMENT 'efectivo, transferencia, etc.',
-    metpago_situacion INT DEFAULT 1 COMMENT '1 = activo, 0 = inactivo'
+-- ========================
+-- INVENTARIO 
+-- ========================
+
+-- Catálogo de lotes/modelos
+CREATE TABLE pro_inventario_modelos (
+    modelo_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID del modelo/lote',
+    modelo_licencia INT NOT NULL COMMENT 'Licencia de importación asociada',
+    modelo_poliza INT NOT NULL COMMENT 'No. de póliza/factura de compra',
+    modelo_fecha_ingreso DATE NOT NULL COMMENT 'Fecha de ingreso del lote',
+    modelo_clase INT NOT NULL,
+    modelo_marca INT NOT NULL,
+    modelo_modelo INT NOT NULL,
+    modelo_calibre VARCHAR(50),
+    modelo_cantidad INT NOT NULL DEFAULT 0 COMMENT 'Cantidad total en este lote',
+    modelo_disponible INT NOT NULL DEFAULT 0 COMMENT 'Stock disponible',
+    modelo_situacion INT DEFAULT 1 COMMENT '1 = activo, 0 = inactivo',
+    FOREIGN KEY (modelo_licencia) REFERENCES pro_licencias_para_importacion(lipaimp_id),
+    FOREIGN KEY (modelo_clase) REFERENCES pro_clases_pistolas(clase_id),
+    FOREIGN KEY (modelo_marca) REFERENCES pro_marcas(marca_id),
+    FOREIGN KEY (modelo_modelo) REFERENCES pro_modelo(modelo_id)
 );
 
+-- Armas individuales con serie
+CREATE TABLE pro_inventario_armas (
+    arma_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID correlativo',
+    arma_modelo_id INT NOT NULL COMMENT 'Referencia al lote o modelo',
+    arma_numero_serie VARCHAR(200) UNIQUE COMMENT 'Número de serie de la pistola',
+    arma_estado ENUM('disponible','vendida','reservada','baja') DEFAULT 'disponible',
+    FOREIGN KEY (arma_modelo_id) REFERENCES pro_inventario_modelos(modelo_id)
+);
+
+-- ========================
+-- CLIENTES Y VENTAS
+-- ========================
+
+CREATE TABLE pro_clientes (
+    cliente_id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_descripcion VARCHAR(50) NOT NULL COMMENT 'NOMBRE DE LA EMPRESA',
+    cliente_nombre_persona VARCHAR(200) COMMENT 'NOMBRE DEL DUEÑO DE LA EMPRESA',
+    cliente_ubicacion VARCHAR(100),
+    cliente_situacion INT DEFAULT 1
+);
+
+CREATE TABLE pro_ventas_empresas (
+    venta_id INT AUTO_INCREMENT PRIMARY KEY,
+    venta_cliente INT NOT NULL COMMENT 'SI LA VENTA SE REALIZÓ A UNA EMPRESA',
+    venta_factura VARCHAR(200),
+    venta_fecha DATE NOT NULL,
+    venta_autorizacion INT NOT NULL COMMENT 'No. de autorización de venta',
+    venta_situacion INT DEFAULT 1,
+    venta_observaciones VARCHAR(200),
+    FOREIGN KEY (venta_cliente) REFERENCES pro_clientes(cliente_id)
+);
+
+CREATE TABLE pro_ventas_personas (
+    venta_id INT AUTO_INCREMENT PRIMARY KEY,
+    venta_cliente_persona VARCHAR(200) COMMENT 'NOMBRE DE LA PERSONA INDIVIDUAL',
+    venta_factura VARCHAR(200),
+    venta_fecha DATE NOT NULL,
+    venta_autorizacion INT NOT NULL,
+    venta_situacion INT DEFAULT 1,
+    venta_observaciones VARCHAR(200)
+);
+
+
+CREATE TABLE pro_detalle_venta (
+    detalle_id INT AUTO_INCREMENT PRIMARY KEY,
+    venta_id INT NOT NULL,
+    venta_tipo ENUM('empresa','persona') NOT NULL,
+    modelo_id INT COMMENT 'Si la venta es por lote/cantidad',
+    arma_id INT COMMENT 'Si la venta es por arma única',
+    cantidad INT DEFAULT 1,
+    precio_unitario DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (modelo_id) REFERENCES pro_inventario_modelos(modelo_id),
+    FOREIGN KEY (arma_id) REFERENCES pro_inventario_armas(arma_id)
+);
+
+-- ========================
+-- PAGOS DE VENTAS
+-- ========================
+
+CREATE TABLE pro_pagos (
+    pago_id INT AUTO_INCREMENT PRIMARY KEY,
+    venta_id INT NOT NULL,
+    venta_tipo ENUM('empresa','persona') NOT NULL,
+    pago_fecha DATE NOT NULL,
+    pago_monto DECIMAL(12,2) NOT NULL,
+    pago_metodo INT NOT NULL,
+    pago_num_cuota INT DEFAULT 1,
+    FOREIGN KEY (pago_metodo) REFERENCES pro_metodos_pago(metpago_id)
+);
+
+CREATE TABLE pro_comprobantes_pago_ventas (
+    comprobventas_id INT AUTO_INCREMENT PRIMARY KEY,
+    comprobventas_ruta VARCHAR(255) NOT NULL,
+    comprobventas_pago_id INT NOT NULL,
+    comprobventas_situacion TINYINT DEFAULT 1,
+    FOREIGN KEY (comprobventas_pago_id) REFERENCES pro_pagos(pago_id)
+);
+
+-- ========================
+-- PAGOS DE LICENCIAS
+-- ========================
+
 CREATE TABLE pro_pagos_licencias (
-    pago_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID de pago',
-    pago_licencia_id INT NOT NULL COMMENT 'Licencia pagada',
-    pago_empresa_id INT NOT NULL COMMENT 'Empresa receptora',
-    pago_fecha DATE NOT NULL COMMENT 'Fecha del pago',
-    pago_monto DECIMAL(10,2) NOT NULL COMMENT 'Monto pagado',
-    pago_metodo INT NOT NULL COMMENT 'Método de pago (clave ajena)',
-    pago_verificado VARCHAR(50) DEFAULT 'no aprobada' COMMENT 'Estado verificación',
-    pago_concepto VARCHAR(250) COMMENT 'Concepto: matriz, logística, etc.',
+    pago_id INT AUTO_INCREMENT PRIMARY KEY,
+    pago_licencia_id INT NOT NULL,
+    pago_empresa_id INT NOT NULL,
+    pago_fecha DATE NOT NULL,
+    pago_monto DECIMAL(10,2) NOT NULL,
+    pago_metodo INT NOT NULL,
+    pago_verificado VARCHAR(50) DEFAULT 'no aprobada',
+    pago_concepto VARCHAR(250),
     CONSTRAINT chk_pago_verificado CHECK (pago_verificado IN ('aprobada','no aprobada')),
     FOREIGN KEY (pago_licencia_id) REFERENCES pro_licencias_para_importacion(lipaimp_id),
     FOREIGN KEY (pago_empresa_id) REFERENCES pro_empresas_de_importacion(empresaimp_id),
@@ -75,17 +212,17 @@ CREATE TABLE pro_pagos_licencias (
 );
 
 CREATE TABLE pro_comprobantes_pago (
-    comprob_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID comprobante de pago',
-    comprob_ruta VARCHAR(50) COMMENT 'Ruta del comprobante',
-    comprob_pagos_licencia INT COMMENT 'Pago asociado',
-    comprob_situacion INT DEFAULT 1 COMMENT '1 = activo, 0 = inactivo',
+    comprob_id INT AUTO_INCREMENT PRIMARY KEY,
+    comprob_ruta VARCHAR(50),
+    comprob_pagos_licencia INT,
+    comprob_situacion INT DEFAULT 1,
     FOREIGN KEY (comprob_pagos_licencia) REFERENCES pro_pagos_licencias(pago_id)
 );
 
 CREATE TABLE pro_documentacion_lic_import (
-    doclicimport_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID documento licencia importación',
-    doclicimport_ruta VARCHAR(50) NOT NULL COMMENT 'Ruta del documento',
-    doclicimport_num_lic INT COMMENT 'Licencia asociada',
-    doclicimport_situacion INT DEFAULT 1 COMMENT '1 = activo, 0 = inactivo',
+    doclicimport_id INT AUTO_INCREMENT PRIMARY KEY,
+    doclicimport_ruta VARCHAR(50) NOT NULL,
+    doclicimport_num_lic INT,
+    doclicimport_situacion INT DEFAULT 1,
     FOREIGN KEY (doclicimport_num_lic) REFERENCES pro_licencias_para_importacion(lipaimp_id)
 );
