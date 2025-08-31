@@ -129,45 +129,41 @@ CREATE TABLE pro_inventario_armas (
 
 CREATE TABLE pro_clientes (
     cliente_id INT AUTO_INCREMENT PRIMARY KEY,
-    cliente_descripcion VARCHAR(50) NOT NULL COMMENT 'NOMBRE DE LA EMPRESA',
-    cliente_nombre_persona VARCHAR(200) COMMENT 'NOMBRE DEL DUEÑO DE LA EMPRESA',
-    cliente_ubicacion VARCHAR(100),
-    cliente_situacion INT DEFAULT 1
+    tipo ENUM('empresa','persona') NOT NULL,
+    nombre_empresa VARCHAR(200) ,
+    nombre VARCHAR(200)  NOT NULL COMMENT 'NOMBRE DEL DUENO DE LA EMPRESA O PERSONA INDIVIDUAL',
+    razon_social VARCHAR(200), -- solo para empresas
+    ubicacion VARCHAR(100),
+    situacion INT DEFAULT 1
 );
 
-CREATE TABLE pro_ventas_empresas (
+-- Ventas solo referencian cliente_id
+CREATE TABLE pro_ventas (
     venta_id INT AUTO_INCREMENT PRIMARY KEY,
-    venta_cliente INT NOT NULL COMMENT 'SI LA VENTA SE REALIZÓ A UNA EMPRESA',
-    venta_factura VARCHAR(200),
-    venta_fecha DATE NOT NULL,
-    venta_autorizacion INT NOT NULL COMMENT 'No. de autorización de venta',
-    venta_situacion INT DEFAULT 1,
-    venta_observaciones VARCHAR(200),
-    FOREIGN KEY (venta_cliente) REFERENCES pro_clientes(cliente_id)
+    cliente_id INT NOT NULL,
+    factura VARCHAR(200),
+    fecha DATE NOT NULL,
+    autorizacion INT NOT NULL,
+    situacion INT DEFAULT 1,
+    observaciones VARCHAR(200),
+    FOREIGN KEY (cliente_id) REFERENCES pro_clientes(cliente_id)
 );
 
-CREATE TABLE pro_ventas_personas (
-    venta_id INT AUTO_INCREMENT PRIMARY KEY,
-    venta_cliente_persona VARCHAR(200) COMMENT 'NOMBRE DE LA PERSONA INDIVIDUAL',
-    venta_factura VARCHAR(200),
-    venta_fecha DATE NOT NULL,
-    venta_autorizacion INT NOT NULL,
-    venta_situacion INT DEFAULT 1,
-    venta_observaciones VARCHAR(200)
-);
+
 
 
 CREATE TABLE pro_detalle_venta (
     detalle_id INT AUTO_INCREMENT PRIMARY KEY,
     venta_id INT NOT NULL,
-    venta_tipo ENUM('empresa','persona') NOT NULL,
     modelo_id INT COMMENT 'Si la venta es por lote/cantidad',
     arma_id INT COMMENT 'Si la venta es por arma única',
     cantidad INT DEFAULT 1,
     precio_unitario DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (venta_id) REFERENCES pro_ventas(venta_id),
     FOREIGN KEY (modelo_id) REFERENCES pro_inventario_modelos(modelo_id),
     FOREIGN KEY (arma_id) REFERENCES pro_inventario_armas(arma_id)
 );
+
 
 -- ========================
 -- PAGOS DE VENTAS
