@@ -53,6 +53,28 @@ CREATE TABLE pro_modelo (
     modelo_situacion INT DEFAULT 1 COMMENT '1 = activo, 0 = inactivo'
 );
 
+
+CREATE TABLE pro_unidades_medida (
+    unidad_id SERIAL PRIMARY KEY,
+    unidad_nombre VARCHAR(50) NOT NULL,       -- Ej: 'milímetro', 'pulgada'
+    unidad_abreviacion VARCHAR(10) NOT NULL,  -- Ej: 'mm', 'in'
+    unidad_tipo VARCHAR(20) DEFAULT 'longitud',
+    unidad_situacion INT DEFAULT 1            -- 1 = activo, 0 = inactivo
+);
+
+-- =========================================
+-- 🟦 TABLA: Calibres
+-- =========================================
+CREATE TABLE pro_calibres (
+    calibre_id SERIAL PRIMARY KEY,
+    calibre_nombre VARCHAR(20) NOT NULL,         -- Ej: '9', '.45'
+    calibre_unidad_id INT NOT NULL,
+    calibre_equivalente_mm DECIMAL(6,2) NULL,
+    calibre_situacion INT DEFAULT 1,
+
+    FOREIGN KEY (calibre_unidad_id) REFERENCES pro_unidades_medida(unidad_id)
+);
+
 -- ========================
 -- EMPRESAS E IMPORTACIONES
 -- ========================
