@@ -123,46 +123,67 @@ CREATE TABLE pro_inventario_armas (
     FOREIGN KEY (arma_modelo_id) REFERENCES pro_inventario_modelos(modelo_id)
 );
 
+
+
+
+------tabla para poger guardar un historial mas exacto  
+
+CREATE TABLE pro_historial_inventario (
+    histinv_historial_id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID del registro de historial',
+    histinv_tipo_movimiento ENUM('ingreso','venta','reserva','baja','ajuste') NOT NULL COMMENT 'Tipo de movimiento realizado',
+    histinv_modelo_id INT DEFAULT NULL COMMENT 'Referencia al modelo/lote si aplica',
+    histinv_arma_id INT DEFAULT NULL COMMENT 'Referencia al arma individual si aplica',
+    histinv_cantidad INT DEFAULT 1 COMMENT 'Cantidad afectada por el movimiento',
+    histinv_fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha y hora del movimiento',
+    histinv_usuario_id INT NOT NULL COMMENT 'Usuario que realizó el movimiento',
+    histinv_observaciones VARCHAR(255) COMMENT 'Notas adicionales sobre el movimiento',
+    FOREIGN KEY (histinv_modelo_id) REFERENCES pro_inventario_modelos(modelo_id),
+    FOREIGN KEY (histinv_arma_id) REFERENCES pro_inventario_armas(arma_id),
+    FOREIGN KEY (histinv_usuario_id) REFERENCES users(id)
+);
+
+
 -- ========================
 -- CLIENTES Y VENTAS
 -- ========================
 
 CREATE TABLE pro_clientes (
     cliente_id INT AUTO_INCREMENT PRIMARY KEY,
-    tipo ENUM('empresa','persona') NOT NULL,
-    nombre_empresa VARCHAR(200) ,
-    nombre VARCHAR(200)  NOT NULL COMMENT 'NOMBRE DEL DUENO DE LA EMPRESA O PERSONA INDIVIDUAL',
-    razon_social VARCHAR(200), -- solo para empresas
-    ubicacion VARCHAR(100),
-    situacion INT DEFAULT 1
+    cliente_tipo ENUM('empresa','persona') NOT NULL,
+    cliente_nombre_empresa VARCHAR(200) ,
+    cliente_nombre VARCHAR(200)  NOT NULL COMMENT 'NOMBRE DEL DUENO DE LA EMPRESA O PERSONA INDIVIDUAL',
+    cliente_razon_social VARCHAR(200), -- solo para empresas
+    cliente_ubicacion VARCHAR(100),
+    cliente_situacion INT DEFAULT 1
 );
 
 -- Ventas solo referencian cliente_id
 CREATE TABLE pro_ventas (
     venta_id INT AUTO_INCREMENT PRIMARY KEY,
-    cliente_id INT NOT NULL,
-    factura VARCHAR(200),
-    fecha DATE NOT NULL,
-    autorizacion INT NOT NULL,
-    situacion INT DEFAULT 1,
-    observaciones VARCHAR(200),
-    FOREIGN KEY (cliente_id) REFERENCES pro_clientes(cliente_id)
+    venta_cliente_id INT NOT NULL,
+    venta_factura VARCHAR(200),
+    venta_fecha DATE NOT NULL,
+    venta_autorizacion INT NOT NULL,
+    venta_cantidad_total INT DEFAULT 0 COMMENT 'Cantidad total de items en la venta';
+    venta_situacion INT DEFAULT 1,
+    venta_observaciones VARCHAR(200),
+    FOREIGN KEY (venta_cliente_id) REFERENCES pro_clientes(cliente_id)
 );
-
-
 
 
 CREATE TABLE pro_detalle_venta (
-    detalle_id INT AUTO_INCREMENT PRIMARY KEY,
-    venta_id INT NOT NULL,
-    modelo_id INT COMMENT 'Si la venta es por lote/cantidad',
-    arma_id INT COMMENT 'Si la venta es por arma única',
-    cantidad INT DEFAULT 1,
-    precio_unitario DECIMAL(12,2) NOT NULL,
-    FOREIGN KEY (venta_id) REFERENCES pro_ventas(venta_id),
-    FOREIGN KEY (modelo_id) REFERENCES pro_inventario_modelos(modelo_id),
-    FOREIGN KEY (arma_id) REFERENCES pro_inventario_armas(arma_id)
+    detallev_id INT AUTO_INCREMENT PRIMARY KEY,
+    detallev_venta_id INT NOT NULL,
+    detallev_modelo_id INT COMMENT 'Si la venta es por lote/cantidad',
+    detallev_arma_id INT COMMENT 'Si la venta es por arma única',
+    detallev_cantidad INT DEFAULT 1,
+    detallev_precio_unitario DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (detallev_id) REFERENCES pro_ventas(venta_id),
+    FOREIGN KEY (detallev_modelo_id) REFERENCES pro_inventario_modelos(modelo_id),
+    FOREIGN KEY (detallev_arma_id) REFERENCES pro_inventario_armas(arma_id)
 );
+
+
 
 
 -- ========================
@@ -171,9 +192,9 @@ CREATE TABLE pro_detalle_venta (
 
 CREATE TABLE pro_pagos (
     pago_id INT AUTO_INCREMENT PRIMARY KEY,
-    venta_id INT NOT NULL,
-    venta_tipo ENUM('empresa','persona') NOT NULL,
-    pago_fecha DATE NOT NULL,
+    pago_venta_id INT NOT NULL,
+    pago_venta_tipo ENUM('empresa','persona') NOT NULL,
+    pago_pago_fecha DATE NOT NULL,
     pago_monto DECIMAL(12,2) NOT NULL,
     pago_metodo INT NOT NULL,
     pago_num_cuota INT DEFAULT 1,
